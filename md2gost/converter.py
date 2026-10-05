@@ -1,17 +1,52 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import re
-import sys
 from pathlib import Path
+
 from docx import Document
-from docx.shared import Inches, Pt, RGBColor, Cm
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.enum.style import WD_STYLE_TYPE
-from docx.enum.section import WD_SECTION
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.oxml.shared import OxmlElement, qn
-from docx.oxml.ns import nsdecls
-from docx.oxml import parse_xml
+from docx.shared import Cm, Inches, Pt, RGBColor
+
+# Структурные элементы по ГОСТ 7.32-2017 — заголовки без номера
+STRUCTURAL_HEADINGS = re.compile(
+    r"^(реферат|содержание|оглавление|введение|заключение|список\s+(использованных\s+)?(литературы|источников)"
+    r"|библиография|bibliography|references|приложени[ея].*|термины\s+и\s+определения"
+    r"|перечень\s+сокращений.*|определения|обозначения\s+и\s+сокращения)$",
+    re.IGNORECASE,
+)
+BIBLIOGRAPHY_HEADING = re.compile(
+    r"^(список\s+(использованных\s+)?(литературы|источников)|библиография|bibliography|references)$",
+    re.IGNORECASE,
+)
+
+
+def set_style_font(style, font_name):
+    """Шрифт стиля для всех письменностей. Встроенные стили Word (заголовки) задают шрифт темы
+    (asciiTheme и т. п.), который перекрывает font.name — без очистки заголовки выходят в Calibri"""
+    style.font.name = font_name
+    rpr = style.element.get_or_add_rPr()
+    rfonts = rpr.find(qn("w:rFonts"))
+    if rfonts is None:
+        rfonts = OxmlElement("w:rFonts")
+        rpr.append(rfonts)
+    for attr in ("w:asciiTheme", "w:hAnsiTheme", "w:eastAsiaTheme", "w:cstheme"):
+        rfonts.attrib.pop(qn(attr), None)
+    for attr in ("w:ascii", "w:hAnsi", "w:eastAsia", "w:cs"):
+        rfonts.set(qn(attr), font_name)
+
+
+def add_page_field(paragraph):
+    """Поле PAGE — номер страницы, который Word подставляет сам"""
+    run = paragraph.add_run()
+    begin, instr, end = OxmlElement("w:fldChar"), OxmlElement("w:instrText"), OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = "PAGE"
+    end.set(qn("w:fldCharType"), "end")
+    run._r.append(begin)
+    run._r.append(instr)
+    run._r.append(end)
+    return run
 
 
 class DocumentSettings:
@@ -95,22 +130,24 @@ class MarkdownToDocxConverter:
             return
             
         section = self.doc.sections[0]
-        
-        # Создание колонтитула для нумерации
-        if self.settings.page_number_position == "bottom_center":
-            footer = section.footer
-            footer_para = footer.paragraphs[0]
-            footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            
-        elif self.settings.page_number_position == "top_right":
-            header = section.header
-            header_para = header.paragraphs[0]
-            header_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-            
-        elif self.settings.page_number_position == "bottom_right":
-            footer = section.footer
-            footer_para = footer.paragraphs[0]
-            footer_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+        # Создание колонтитула для нумерации (раньше колонтитул создавался, но поле номера
+        # страницы в него не добавлялось — номеров в документе не было)
+        if self.settings.page_number_position == "top_right":
+            para = section.header.paragraphs[0]
+            para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        else:
+            para = section.footer.paragraphs[0]
+            para.alignment = (WD_ALIGN_PARAGRAPH.RIGHT if self.settings.page_number_position == "bottom_right"
+                              else WD_ALIGN_PARAGRAPH.CENTER)
+        para.paragraph_format.first_line_indent = Cm(0)
+        run = add_page_field(para)
+        run.font.name = self.settings.font_name
+        run.font.size = Pt(self.settings.font_size)
+
+        # титульный лист без номера: у первой страницы свой, пустой колонтитул
+        if self.settings.exclude_title_page_numbering:
+            section.different_first_page_header_footer = True
     
     def setup_styles(self):
         """Настройка стилей документа в соответствии с ГОСТ"""
@@ -119,7 +156,7 @@ class MarkdownToDocxConverter:
         # Настройка базового стиля
         normal_style = styles['Normal']
         normal_font = normal_style.font
-        normal_font.name = self.settings.font_name
+        set_style_font(normal_style, self.settings.font_name)
         normal_font.size = Pt(self.settings.font_size)
         normal_font.color.rgb = RGBColor(*self.settings.text_color)
         
@@ -151,9 +188,10 @@ class MarkdownToDocxConverter:
                 heading_style = styles.add_style(heading_style_name, WD_STYLE_TYPE.PARAGRAPH)
                 
             heading_font = heading_style.font
-            heading_font.name = self.settings.font_name
+            set_style_font(heading_style, self.settings.font_name)
             heading_font.size = Pt(heading_sizes[i-1])  # используем соответствующий размер
             heading_font.bold = True
+            heading_font.italic = False
             heading_font.color.rgb = RGBColor(*self.settings.text_color)
             
             heading_paragraph = heading_style.paragraph_format
@@ -181,24 +219,24 @@ class MarkdownToDocxConverter:
             footnote_paragraph.space_before = Pt(3)
             footnote_paragraph.space_after = Pt(3)
             footnote_paragraph.first_line_indent = Cm(0.5)
-        except:
+        except ValueError:  # стиль уже есть
             pass
             
         # Стиль для кода (без изменений)
         try:
             code_style = styles.add_style('Code', WD_STYLE_TYPE.CHARACTER)
             code_font = code_style.font
-            code_font.name = 'Courier New'
+            set_style_font(code_style, 'Courier New')
             code_font.size = Pt(self.settings.font_size)
             code_font.color.rgb = RGBColor(*self.settings.text_color)
-        except:
+        except ValueError:  # стиль уже есть
             pass
             
         # Стиль для блоков кода
         try:
             code_block_style = styles.add_style('Code Block', WD_STYLE_TYPE.PARAGRAPH)
             code_block_font = code_block_style.font
-            code_block_font.name = 'Courier New'
+            set_style_font(code_block_style, 'Courier New')
             code_block_font.size = Pt(self.settings.font_size)
             code_block_font.color.rgb = RGBColor(*self.settings.text_color)
             
@@ -207,23 +245,25 @@ class MarkdownToDocxConverter:
             code_block_paragraph.first_line_indent = Cm(0)  # без отступа первой строки для кода
             code_block_paragraph.space_before = Pt(6)
             code_block_paragraph.space_after = Pt(6)
-        except:
+        except ValueError:  # стиль уже есть
             pass
             
         # Стиль для подписей к таблицам и рисункам
-        try:
-            caption_style = styles.add_style('Caption', WD_STYLE_TYPE.PARAGRAPH)
-            caption_font = caption_style.font
-            caption_font.name = self.settings.font_name
-            caption_font.size = Pt(self.settings.font_size - 2)  # меньше основного текста
-            caption_font.color.rgb = RGBColor(*self.settings.text_color)
-            
-            caption_paragraph = caption_style.paragraph_format
-            caption_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            caption_paragraph.space_before = Pt(6)
-            caption_paragraph.space_after = Pt(6)
-        except:
-            pass
+        # «Caption» уже есть во встроенном шаблоне (синий, 9 пт) — настраиваем его, а не создаём
+        caption_style = (styles['Caption'] if 'Caption' in [s.name for s in styles]
+                         else styles.add_style('Caption', WD_STYLE_TYPE.PARAGRAPH))
+        caption_font = caption_style.font
+        set_style_font(caption_style, self.settings.font_name)
+        caption_font.size = Pt(self.settings.font_size - 2)  # меньше основного текста
+        caption_font.bold = False
+        caption_font.italic = False
+        caption_font.color.rgb = RGBColor(*self.settings.text_color)
+
+        caption_paragraph = caption_style.paragraph_format
+        caption_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        caption_paragraph.first_line_indent = Cm(0)
+        caption_paragraph.space_before = Pt(6)
+        caption_paragraph.space_after = Pt(6)
     
     def generate_heading_number(self, level: int) -> str:
         """Генерация номера заголовка согласно настройкам автонумерации"""
@@ -250,11 +290,11 @@ class MarkdownToDocxConverter:
     def parse_markdown_file(self, file_path: str):
         """Чтение и парсинг Markdown файла"""
         try:
-            with open(file_path, 'r', encoding='utf-8') as file:
+            with open(file_path, 'r', encoding='utf-8-sig') as file:
                 content = file.read()
             return content
         except Exception as e:
-            raise Exception(f"Ошибка чтения файла: {e}")
+            raise Exception(f"Ошибка чтения файла: {e}") from e
     
     def add_text_run_with_color(self, paragraph, text, bold=False, italic=False, code_style=False):
         """Добавление текста с настройкой цвета"""
@@ -305,68 +345,74 @@ class MarkdownToDocxConverter:
                 # Обычный текст
                 self.add_text_run_with_color(paragraph, part)
     
+    LIST_ITEM = re.compile(r'^(\s*)([-*+]|\d+[.)])\s+(.*)$')
+
     def process_list(self, lines: list, start_idx: int):
-        """Обработка списков с правильным форматированием по ГОСТ"""
+        """Обработка списков с правильным форматированием по ГОСТ.
+        Маркер — тире, нумерация своя для каждого списка и уровня (раньше стиль List Bullet давал
+        второй маркер, вложенность терялась, а List Number продолжал счёт из предыдущего списка)"""
         i = start_idx
-        list_items = []
-        
+        counters = {}
+
         while i < len(lines):
-            line = lines[i].strip()
-            
-            if re.match(r'^[-*+]\s', line):
-                item_text = re.sub(r'^[-*+]\s', '', line)
-                list_items.append(('bullet', item_text, 0))
-            elif re.match(r'^\d+\.\s', line):
-                item_text = re.sub(r'^\d+\.\s', '', line)
-                list_items.append(('number', item_text, 0))
-            elif re.match(r'^  [-*+]\s', line):
-                item_text = re.sub(r'^  [-*+]\s', '', line)
-                list_items.append(('bullet', item_text, 1))
-            elif re.match(r'^  \d+\.\s', line):
-                item_text = re.sub(r'^  \d+\.\s', '', line)
-                list_items.append(('number', item_text, 1))
-            elif line == '':
-                i += 1
-                continue
-            else:
+            match = self.LIST_ITEM.match(lines[i].expandtabs(4))
+            if not match:
+                if lines[i].strip() == '' and i + 1 < len(lines) and self.LIST_ITEM.match(lines[i + 1].expandtabs(4)):
+                    i += 1
+                    continue
                 break
-            i += 1
-        
-        # Добавление элементов списка с настройками ГОСТ
-        for list_type, text, level in list_items:
-            paragraph = self.doc.add_paragraph()
-            paragraph.paragraph_format.left_indent = Cm(level * 0.75)  # увеличенный отступ для вложенности
-            paragraph.paragraph_format.first_line_indent = Cm(self.settings.paragraph_indent)
-            
-            if list_type == 'bullet':
-                paragraph.style = 'List Bullet'
-                # Используем тире вместо точек (согласно ГОСТ)
-                bullet_run = paragraph.runs[0] if paragraph.runs else paragraph.add_run()
-                bullet_run.text = "– "  # длинное тире
+
+            indent, marker, text = match.groups()
+            level = min(len(indent) // 2, 3)
+            for deeper in [lvl for lvl in counters if lvl > level]:
+                del counters[deeper]
+
+            if marker[0].isdigit():
+                counters[level] = counters.get(level, 0) + 1
+                prefix = f"{counters[level]}) "
             else:
-                paragraph.style = 'List Number'
-            
+                counters.pop(level, None)
+                prefix = "– "  # тире вместо точек (ГОСТ)
+
+            paragraph = self.doc.add_paragraph()
+            paragraph.paragraph_format.left_indent = Cm(level * 0.75)
+            paragraph.paragraph_format.first_line_indent = Cm(self.settings.paragraph_indent)
+            self.add_text_run_with_color(paragraph, prefix)
             self.process_text_formatting(text, paragraph)
-        
+            i += 1
+
         return i - 1
-    
+
+    TABLE_SEPARATOR = re.compile(r'^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?$')
+
+    @staticmethod
+    def split_row(line: str) -> list:
+        """Ячейки строки таблицы; внешние «|» необязательны"""
+        line = line.strip()
+        if line.startswith('|'):
+            line = line[1:]
+        if line.endswith('|'):
+            line = line[:-1]
+        return [cell.strip() for cell in line.split('|')]
+
     def process_table(self, lines: list, start_idx: int):
         """Обработка таблиц с подписями согласно ГОСТ"""
         i = start_idx
         table_lines = []
         
+        # таблица заканчивается на пустой строке — иначе две таблицы подряд сливались в одну
         while i < len(lines):
             line = lines[i].strip()
             if '|' in line:
                 table_lines.append(line)
-            elif line == '':
-                i += 1
-                continue
             else:
                 break
             i += 1
-        
-        if len(table_lines) < 2:
+
+        if len(table_lines) < 2 or not self.TABLE_SEPARATOR.match(table_lines[1]):
+            # не таблица, а строка с «|» — обычный абзац
+            paragraph = self.doc.add_paragraph()
+            self.process_text_formatting(lines[start_idx].strip(), paragraph)
             return start_idx
         
         # Добавляем подпись к таблице (если настроено)
@@ -374,10 +420,11 @@ class MarkdownToDocxConverter:
             self.table_counter += 1
             caption_para = self.doc.add_paragraph()
             caption_para.style = 'Caption'
+            caption_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
             caption_para.add_run(f"Таблица {self.table_counter}")
         
         # Парсинг и создание таблицы
-        headers = [cell.strip() for cell in table_lines[0].split('|')[1:-1]]
+        headers = self.split_row(table_lines[0])
         data_lines = table_lines[2:] if len(table_lines) > 2 else []
         
         table = self.doc.add_table(rows=1, cols=len(headers))
@@ -395,7 +442,7 @@ class MarkdownToDocxConverter:
         
         # Заполнение данных
         for line in data_lines:
-            row_data = [cell.strip() for cell in line.split('|')[1:-1]]
+            row_data = self.split_row(line)
             row = table.add_row()
             for idx, cell_data in enumerate(row_data):
                 if idx < len(row.cells):
@@ -404,11 +451,23 @@ class MarkdownToDocxConverter:
                     for paragraph in row.cells[idx].paragraphs:
                         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         
+        # в ячейках — без абзацного отступа и с одинарным интервалом, иначе текст смещён,
+        # а строки получаются высокими
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    fmt = paragraph.paragraph_format
+                    fmt.first_line_indent = Cm(0)
+                    fmt.space_before = Pt(0)
+                    fmt.space_after = Pt(0)
+                    fmt.line_spacing = 1.0
+
         # Подпись снизу (если настроено)
         if self.settings.table_caption_position == "below":
             self.table_counter += 1
             caption_para = self.doc.add_paragraph()
             caption_para.style = 'Caption'
+            caption_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
             caption_para.add_run(f"Таблица {self.table_counter}")
         
         return i - 1
@@ -451,8 +510,8 @@ class MarkdownToDocxConverter:
         # Поиск элементов библиографии
         while i < len(lines):
             line = lines[i].strip()
-            if re.match(r'^\d+\.\s', line):
-                bib_text = re.sub(r'^\d+\.\s', '', line)
+            if re.match(r'^(\d+[.)]|[-*+])\s', line):
+                bib_text = re.sub(r'^(\d+[.)]|[-*+])\s', '', line)
                 bib_items.append(bib_text)
             elif line == '':
                 i += 1
@@ -462,12 +521,7 @@ class MarkdownToDocxConverter:
             i += 1
         
         if bib_items:
-            # Заголовок списка литературы
-            bib_heading = self.doc.add_paragraph()
-            bib_heading.style = 'Heading 1'
-            bib_heading.add_run("СПИСОК ЛИТЕРАТУРЫ")
-            
-            # Элементы библиографии
+            # Элементы библиографии (заголовок уже добавлен в convert)
             for idx, item in enumerate(bib_items, 1):
                 bib_para = self.doc.add_paragraph()
                 bib_para.paragraph_format.first_line_indent = Cm(0)
@@ -511,36 +565,40 @@ class MarkdownToDocxConverter:
                 match = re.match(r'^(#{1,6})\s+(.+)', stripped_line)
                 if match:
                     level = len(match.group(1))
-                    title = match.group(2)
-                    
+                    title = match.group(2).strip()
+                    structural = bool(STRUCTURAL_HEADINGS.match(title.rstrip(':')))
+
                     # Разрыв страницы перед заголовком 2 уровня
                     if level == 2:
                         self.doc.add_page_break()
-                    
+
                     heading = self.doc.add_paragraph()
                     heading.style = f'Heading {level}'
-                    
-                    # Добавляем автонумерацию
-                    heading_number = self.generate_heading_number(level)
-                    full_title = heading_number + title
-                    
-                    self.process_text_formatting(full_title, heading)
+
+                    if structural:
+                        # структурные элементы (введение, заключение, список литературы...) по ГОСТ
+                        # не нумеруются, пишутся прописными и по центру
+                        heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        heading.paragraph_format.first_line_indent = Cm(0)
+                        self.process_text_formatting(title.upper(), heading)
+                        if BIBLIOGRAPHY_HEADING.match(title.rstrip(':')):
+                            i = self.process_bibliography(lines, i + 1)
+                    else:
+                        # Добавляем автонумерацию
+                        heading_number = self.generate_heading_number(level)
+                        self.process_text_formatting(heading_number + title, heading)
             
             # Блоки кода
             elif stripped_line.startswith('```'):
                 i = self.process_code_block(lines, i)
             
+            # Списки
+            elif self.LIST_ITEM.match(line.expandtabs(4)):
+                i = self.process_list(lines, i)
+
             # Таблицы
             elif '|' in stripped_line:
                 i = self.process_table(lines, i)
-            
-            # Списки
-            elif re.match(r'^[-*+]\s', stripped_line) or re.match(r'^\d+\.\s', stripped_line):
-                i = self.process_list(lines, i)
-            
-            # Список литературы (если заголовок содержит "литература" или "bibliography")
-            elif re.match(r'^#+\s*(список\s+литературы|bibliography|references)', stripped_line, re.IGNORECASE):
-                i = self.process_bibliography(lines, i + 1)
             
             # Цитаты
             elif stripped_line.startswith('>'):
@@ -576,47 +634,3 @@ class MarkdownToDocxConverter:
         
         self.doc.save(output_path)
         return output_path
-
-
-def main():
-    """Основная функция для запуска из командной строки"""
-    if len(sys.argv) < 2:
-        print("Использование: python md_converter.py <путь_к_md_файлу> [путь_к_выходному_файлу]")
-        return
-    
-    md_file = sys.argv[1]
-    output_file = sys.argv[2] if len(sys.argv) > 2 else None
-    
-    # ГОСТ-совместимые настройки по умолчанию
-    settings = DocumentSettings()
-    
-    converter = MarkdownToDocxConverter(settings)
-    
-    try:
-        output_path = converter.convert(md_file, output_file)
-        print(f"Файл успешно конвертирован: {output_path}")
-    except Exception as e:
-        print(f"Ошибка конвертации: {e}")
-
-
-if __name__ == "__main__":
-    main()
-
-
-# Пример использования с кастомными ГОСТ настройками:
-"""
-settings = DocumentSettings()
-settings.font_name = "Times New Roman"
-settings.font_size = 14
-settings.heading1_font_size = 16
-settings.heading2_font_size = 14
-settings.line_spacing = 1.5
-settings.margin_left = 3.0  # для переплета
-settings.auto_numbering_headings = True
-settings.numbering_format = "decimal"  # 1.1.1 формат
-settings.page_numbering = True
-settings.page_number_position = "bottom_center"
-
-converter = MarkdownToDocxConverter(settings)
-converter.convert("dissertation.md", "dissertation_gost.docx")
-"""
