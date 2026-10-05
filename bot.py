@@ -20,8 +20,8 @@ from rep_to_txt import generate_complete_project_structure
 BOT_TOKEN = os.getenv("BOT_TOKEN", "XXXXXXXXXXXXXXXXXXXXXXXX")  # @my_convbot
 
 MAX_FILE_SIZE = 20 * 1024 * 1024        # больше Telegram-боту не скачать
-MAX_UNPACKED_SIZE = 200 * 1024 * 1024   # защита от zip-бомбы
-MAX_FILES_IN_ARCHIVE = 5000
+MAX_UNPACKED_SIZE = 15 * 1024 ** 3        # защита от zip-бомбы: 15 ГБ в распакованном виде
+MAX_FILES_IN_ARCHIVE = 10_000_000
 
 # Инициализация бота
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
@@ -139,9 +139,9 @@ def check_archive(zip_ref: zipfile.ZipFile) -> None:
     """Архив на 20 МБ может распаковаться в гигабайты и забить диск — проверяем до распаковки"""
     infos = zip_ref.infolist()
     if len(infos) > MAX_FILES_IN_ARCHIVE:
-        raise ArchiveTooLarge(f"В архиве больше {MAX_FILES_IN_ARCHIVE} файлов")
+        raise ArchiveTooLarge(f"В архиве больше {MAX_FILES_IN_ARCHIVE:,} файлов".replace(",", " "))
     if sum(info.file_size for info in infos) > MAX_UNPACKED_SIZE:
-        raise ArchiveTooLarge(f"Распакованный архив больше {MAX_UNPACKED_SIZE // 1024 // 1024} МБ")
+        raise ArchiveTooLarge(f"Распакованный архив больше {MAX_UNPACKED_SIZE / 1024 ** 3:g} ГБ")
 
 
 def analyze_archive(archive_path: str, temp_dir: str) -> str:

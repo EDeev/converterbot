@@ -58,7 +58,7 @@ The Markdown parser is custom and line-based: nested tables and lists inside tab
 | `.md` | a GOST-formatted `.docx` (the same md2gost, with heading numbers) |
 | project `.zip` | a `.txt`: folder tree and contents of text files with line numbers, handy for an LLM or a report appendix |
 
-Files up to 20 MB. Archives are checked before extraction: at most 5000 files and 200 MB unpacked. Service
+Files up to 20 MB. Archives are checked before extraction: at most 10,000,000 files and 15 GB unpacked. Service
 folders (`.git`, `node_modules`, `__pycache__`, `build`…) and binary files are skipped. Conversion runs in
 a separate thread, so the bot never freezes on big files.
 
