@@ -1,11 +1,11 @@
-# My Converter Bot · md2gost
+# Converter Bot · md2gost
 
-[Русский](https://github.com/EDeev/my_converterbot/blob/main/README.md) · **English**
+[Русский](https://github.com/EDeev/converterbot/blob/main/README.md) · **English**
 
-[![CI](https://github.com/EDeev/my_converterbot/actions/workflows/ci.yml/badge.svg)](https://github.com/EDeev/my_converterbot/actions/workflows/ci.yml)
+[![CI](https://github.com/EDeev/converterbot/actions/workflows/ci.yml/badge.svg)](https://github.com/EDeev/converterbot/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/md2gost)](https://pypi.org/project/md2gost/)
 [![Python](https://img.shields.io/pypi/pyversions/md2gost)](https://pypi.org/project/md2gost/)
-[![License](https://img.shields.io/github/license/EDeev/my_converterbot)](https://github.com/EDeev/my_converterbot/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/EDeev/converterbot)](https://github.com/EDeev/converterbot/blob/main/LICENSE)
 
 A Markdown to DOCX converter that follows GOST 7.32-2017 (the Russian standard for research and student
 reports), plus a Telegram bot for study routine: send a `.md` and get a report ready to submit, send a
@@ -15,7 +15,7 @@ own as the `md2gost` package on PyPI. The bot speaks Russian.
 **Status:** personal project, maintained · bot [@my_convbot](https://t.me/my_convbot) ·
 package [md2gost](https://pypi.org/project/md2gost/)
 
-![Pages of a report built with md2gost](https://raw.githubusercontent.com/EDeev/my_converterbot/main/docs/demo.png)
+![Pages of a report built with md2gost](https://raw.githubusercontent.com/EDeev/converterbot/main/docs/demo.png)
 
 **Stack:** Python 3.9+ · python-docx · aiogram 3 · Docker
 
@@ -63,12 +63,12 @@ folders (`.git`, `node_modules`, `__pycache__`, `build`…) and binary files are
 a separate thread, so the bot never freezes on big files.
 
 ```bash
-git clone https://github.com/EDeev/my_converterbot.git && cd my_converterbot
+git clone https://github.com/EDeev/converterbot.git && cd converterbot
 cp .env.example .env      # BOT_TOKEN from @BotFather
 docker compose up -d
 ```
 
-Prebuilt image: `docker pull ghcr.io/edeev/my_converterbot` or `docker pull dcr.deev.su/edeev/my_converterbot`.
+Prebuilt image: `docker pull ghcr.io/edeev/converterbot` or `docker pull dcr.deev.su/edeev/converterbot`.
 Without Docker: `pip install -r requirements.txt`, then `BOT_TOKEN=… python bot.py`.
 
 `rep_to_txt.py` also works on its own: `python rep_to_txt.py path/to/project`.
@@ -85,7 +85,7 @@ PyPI and the bot's Docker image to GitHub Packages and `dcr.deev.su`.
 
 ## License
 
-MIT — see [LICENSE](https://github.com/EDeev/my_converterbot/blob/main/LICENSE).
+MIT — see [LICENSE](https://github.com/EDeev/converterbot/blob/main/LICENSE).
 
 ## Author
 

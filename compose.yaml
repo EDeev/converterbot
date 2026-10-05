@@ -1,6 +1,6 @@
 services:
   bot:
     build: .
-    image: ghcr.io/edeev/my_converterbot:latest
+    image: ghcr.io/edeev/converterbot:latest
     env_file: .env
     restart: unless-stopped

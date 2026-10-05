@@ -47,8 +47,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/edeev/my_converterbot
-            dcr.deev.su/edeev/my_converterbot
+            ghcr.io/edeev/converterbot
+            dcr.deev.su/edeev/converterbot
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}

@@ -1,11 +1,11 @@
-# My Converter Bot · md2gost
+# Converter Bot · md2gost
 
 **Русский** · [English](README.en.md)
 
-[![CI](https://github.com/EDeev/my_converterbot/actions/workflows/ci.yml/badge.svg)](https://github.com/EDeev/my_converterbot/actions/workflows/ci.yml)
+[![CI](https://github.com/EDeev/converterbot/actions/workflows/ci.yml/badge.svg)](https://github.com/EDeev/converterbot/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/md2gost)](https://pypi.org/project/md2gost/)
 [![Python](https://img.shields.io/pypi/pyversions/md2gost)](https://pypi.org/project/md2gost/)
-[![License](https://img.shields.io/github/license/EDeev/my_converterbot)](LICENSE)
+[![License](https://img.shields.io/github/license/EDeev/converterbot)](LICENSE)
 
 Конвертер Markdown в DOCX по ГОСТ 7.32-2017 и Telegram-бот для учебной рутины: присылаешь `.md` —
 получаешь отчёт, готовый к сдаче, присылаешь `.zip` с проектом — получаешь `.txt` с деревом папок и
@@ -62,12 +62,12 @@ MarkdownToDocxConverter(settings).convert("report.md", "report.docx")
 Конвертация идёт в отдельном потоке, поэтому бот не замирает на больших файлах.
 
 ```bash
-git clone https://github.com/EDeev/my_converterbot.git && cd my_converterbot
+git clone https://github.com/EDeev/converterbot.git && cd converterbot
 cp .env.example .env      # BOT_TOKEN от @BotFather
 docker compose up -d
 ```
 
-Готовый образ: `docker pull ghcr.io/edeev/my_converterbot` или `docker pull dcr.deev.su/edeev/my_converterbot`.
+Готовый образ: `docker pull ghcr.io/edeev/converterbot` или `docker pull dcr.deev.su/edeev/converterbot`.
 Без Docker: `pip install -r requirements.txt`, затем `BOT_TOKEN=… python bot.py`.
 
 `rep_to_txt.py` работает и сам по себе: `python rep_to_txt.py путь/к/проекту`.

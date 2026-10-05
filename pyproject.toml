@@ -23,8 +23,8 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/EDeev/my_converterbot"
-Issues = "https://github.com/EDeev/my_converterbot/issues"
+Homepage = "https://github.com/EDeev/converterbot"
+Issues = "https://github.com/EDeev/converterbot/issues"
 Bot = "https://t.me/my_convbot"
 
 [project.scripts]
