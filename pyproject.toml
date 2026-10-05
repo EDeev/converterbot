@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "md2gost"
+dynamic = ["version"]
+description = "Markdown to DOCX formatted per GOST 7.32-2017 (Russian standard for reports)"
+readme = "README.en.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Egor Deev", email = "egor@deev.space" }]
+requires-python = ">=3.9"
+dependencies = ["python-docx>=1.1"]
+keywords = ["markdown", "docx", "gost", "word", "report", "converter"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Natural Language :: Russian",
+    "Topic :: Office/Business :: Office Suites",
+    "Topic :: Text Processing :: Markup :: Markdown",
+]
+
+[project.urls]
+Homepage = "https://github.com/EDeev/my_converterbot"
+Issues = "https://github.com/EDeev/my_converterbot/issues"
+Bot = "https://t.me/my_convbot"
+
+[project.scripts]
+md2gost = "md2gost.cli:main"
+
+[tool.hatch.version]
+path = "md2gost/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["md2gost"]
+
+[tool.hatch.build.targets.sdist]
+include = ["md2gost", "tests/test_md2gost.py", "README.md", "README.en.md", "LICENSE"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
