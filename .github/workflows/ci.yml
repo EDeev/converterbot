@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install pytest==8.4.2 ruff==0.14.0 build python-docx
+      - run: ruff check --select E9,F,B .
+      - name: Тесты пакета md2gost
+        run: pytest -q tests/test_md2gost.py
+      - name: Тесты бота
+        if: matrix.python-version != '3.9'
+        run: pip install -r requirements.txt && pytest -q tests/test_bot_helpers.py
+      - name: Сборка пакета
+        run: python -m build && pip install dist/*.whl && md2gost --version

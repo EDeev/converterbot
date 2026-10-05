@@ -1,171 +1,108 @@
-# 📄 My Converter Bot
+# My Converter Bot · md2gost
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
-[![aiogram](https://img.shields.io/badge/aiogram-3.x-00ADD8.svg)](https://docs.aiogram.dev/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+**Русский** · [English](README.en.md)
 
-Телеграм-бот для автоматизированной конвертации документов с поддержкой форматирования по ГОСТ 7.32-2017 и анализа структуры проектов.
+[![CI](https://github.com/EDeev/my_converterbot/actions/workflows/ci.yml/badge.svg)](https://github.com/EDeev/my_converterbot/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/md2gost)](https://pypi.org/project/md2gost/)
+[![Python](https://img.shields.io/pypi/pyversions/md2gost)](https://pypi.org/project/md2gost/)
+[![License](https://img.shields.io/github/license/EDeev/my_converterbot)](LICENSE)
 
-## 🎯 Функциональные возможности
+Конвертер Markdown в DOCX по ГОСТ 7.32-2017 и Telegram-бот для учебной рутины: присылаешь `.md` —
+получаешь отчёт, готовый к сдаче, присылаешь `.zip` с проектом — получаешь `.txt` с деревом папок и
+содержимым файлов. Конвертер ставится отдельно, пакетом `md2gost` с PyPI.
 
-### Конвертация Markdown → DOCX
-- **Полная поддержка ГОСТ 7.32-2017**: автоматическое форматирование научно-технической документации
-- **Интеллектуальная обработка синтаксиса**: заголовки, списки, таблицы, блоки кода
-- **Автоматическая нумерация**: иерархическая нумерация разделов (1.1.1, 1.1.2)
-- **Управление сносками**: интеграция footnotes с автоматическим форматированием
-- **Настраиваемая типографика**: Times New Roman 14pt, межстрочный интервал 1.5
+**Статус:** личный проект, поддерживается · бот [@my_convbot](https://t.me/my_convbot) ·
+пакет [md2gost](https://pypi.org/project/md2gost/)
 
-### Анализ архивов → TXT
-- **Древовидная визуализация**: полная структура проекта с UTF-8 оформлением
-- **Извлечение содержимого**: автоматический экспорт кода из всех текстовых файлов
-- **Интеллектуальная фильтрация**: игнорирование служебных директорий (node_modules, __pycache__)
-- **Обработка бинарных файлов**: детектирование и генерация placeholder для медиа
+![Страницы отчёта, собранного md2gost](docs/demo.png)
 
-## 🔧 Технологический стек
+**Стек:** Python 3.9+ · python-docx · aiogram 3 · Docker
 
-| Компонент | Технология | Назначение |
-|-----------|------------|------------|
-| **Bot Framework** | aiogram 3.x | Асинхронная обработка Telegram API |
-| **Document Processing** | python-docx | Генерация DOCX с программным управлением стилями |
-| **Parsing Engine** | re (regex) | Парсинг Markdown синтаксиса |
-| **Archive Handling** | zipfile | Распаковка и анализ архивов |
-| **Async Runtime** | asyncio | Конкурентная обработка запросов |
-
-## 📦 Установка и развертывание
-
-### Системные требования
-- Python 3.10 или выше
-- pip package manager
-- Telegram Bot Token (получить у [@BotFather](https://t.me/botfather))
-
-### Процедура установки
+## md2gost — Markdown → DOCX по ГОСТ
 
 ```bash
-# Клонирование репозитория
-git clone https://github.com/EDeev/my_converterbot.git
-cd my_converterbot
-
-# Установка зависимостей
-pip install -r requirements.txt
-
-# Конфигурация токена
-# Отредактируйте bot.py, установите ваш BOT_TOKEN
-# BOT_TOKEN = "your_telegram_bot_token_here"
-
-# Запуск бота
-python bot.py
+pip install md2gost
+md2gost report.md                 # рядом появится report.docx
+md2gost report.md -o out.docx --no-heading-numbers
 ```
 
-## 🚀 Использование
+Что делает с документом:
 
-### Базовые команды
-- `/start` — инициализация и приветственное сообщение
-- `/help` — детальная документация по функциям
+- поля: левое 30 мм, правое 15, верхнее и нижнее 20; Times New Roman 14 пт, интервал 1,5, абзацный отступ 1,25 см, выравнивание по ширине
+- номера страниц внизу по центру, без номера на титульном листе
+- нумерация разделов `1.`, `1.1.`, `1.1.1.`; «Введение», «Заключение», «Список литературы» и другие
+  структурные элементы — без номера, прописными, по центру
+- разрыв страницы перед каждым разделом второго уровня
+- маркированные списки с тире и вложенностью, нумерованные — `1)`, своя нумерация у каждого списка
+- таблицы с подписью «Таблица N» слева сверху, блоки и вставки кода моноширинным шрифтом, цитаты,
+  сноски `[^1]`, жирный и курсив
 
-### Рабочий процесс
-
-#### Markdown → DOCX конвертация
-1. Отправьте `.md` файл боту
-2. Система автоматически применит ГОСТ форматирование
-3. Получите готовый `.docx` документ
-
-**Пример входного Markdown:**
-```markdown
-# Введение
-
-Основной текст с **жирным** и *курсивным* форматированием[^1].
-
-## 1. Методология
-
-- Пункт списка 1
-- Пункт списка 2
-
-[^1]: Текст сноски
-```
-
-#### ZIP → TXT анализ
-1. Отправьте `.zip` архив с проектом
-2. Бот извлечет и проанализирует структуру
-3. Получите `project_structure.txt` с полным содержимым
-
-## ⚙️ Архитектурные особенности
-
-### Модульная структура
-
-```
-my_converterbot/
-├── bot.py              # Основной модуль Telegram бота
-├── md_to_docx.py       # Конвертер Markdown с ГОСТ движком
-├── rep_to_txt.py       # Анализатор проектных структур
-├── requirements.txt    # Спецификация зависимостей
-└── README.md          # Текущая документация
-```
-
-### DocumentSettings: Параметрическая конфигурация
-
-Класс `DocumentSettings` обеспечивает гранулярное управление:
-- Размеры шрифтов (14pt основной текст, 16pt заголовки первого уровня)
-- Отступы документа (левый: 3.0 см для переплета)
-- Режимы нумерации (decimal: 1.1.1 или simple: 1)
-- Позиционирование номеров страниц
-
-### Интеллектуальная обработка
-
-**Алгоритм обработки списков:**
-- Распознавание вложенности через отступы
-- Автоматическая замена bullet points на длинное тире (ГОСТ)
-- Сохранение иерархической структуры
-
-**Система обработки сносок:**
-- Inline маркеры `[^1]` → верхний индекс в тексте
-- Автоматическая агрегация определений
-- Размещение в конце документа с разделителем
-
-## 🔒 Ограничения и constraints
-
-- **Максимальный размер файла**: 20 МБ (Telegram API limitation)
-- **Поддерживаемые форматы входных данных**: `.md`, `.zip`
-- **Кодировки**: UTF-8, UTF-8-sig, CP1251, Latin1 (fallback цепочка)
-
-## 📊 Производительность
-
-- **Обработка Markdown**: ~0.5-2 сек для документов до 50 страниц
-- **Анализ ZIP архивов**: ~1-5 сек для проектов до 1000 файлов
-- **Конкурентная обработка**: до 10 одновременных запросов
-
-## 🛠️ Расширение функциональности
-
-### Кастомизация ГОСТ параметров
+Параметры командной строки: `--font`, `--size`, `--spacing`, `--no-heading-numbers`, `--no-page-numbers`,
+`--number-title-page`. Из Python:
 
 ```python
-from md_to_docx import MarkdownToDocxConverter, DocumentSettings
+from md2gost import DocumentSettings, MarkdownToDocxConverter
 
 settings = DocumentSettings()
-settings.font_name = "Times New Roman"
-settings.font_size = 14
-settings.line_spacing = 1.5
-settings.margin_left = 3.0
 settings.auto_numbering_headings = True
-settings.numbering_format = "decimal"
-
-converter = MarkdownToDocxConverter(settings)
-converter.convert("input.md", "output.docx")
+MarkdownToDocxConverter(settings).convert("report.md", "report.docx")
 ```
 
-## 📄 Лицензия
+Разбор Markdown свой и построчный: вложенные таблицы и списки внутри таблиц не поддерживаются.
 
-Этот проект является некоммерческим и распространяется под лицензией MIT.
+## Бот
 
-## 👨‍💻 Автор
+| Прислать | Получить |
+|---|---|
+| `.md` | `.docx` по ГОСТ (тот же md2gost с нумерацией заголовков) |
+| `.zip` с проектом | `.txt`: дерево папок и содержимое текстовых файлов с номерами строк — удобно отдать в LLM или приложить к отчёту |
 
-**Деев Егор Викторович** - Backend Developer  
-- GitHub: [@EDeev](https://github.com/EDeev)
-- Email: egor@deev.space
-- Telegram: [@Egor_Deev](https://t.me/Egor_Deev)
+Файлы — до 20 МБ. Архив проверяется до распаковки: не больше 5000 файлов и 200 МБ в распакованном виде.
+Служебные папки (`.git`, `node_modules`, `__pycache__`, `build`…) и бинарные файлы пропускаются.
+Конвертация идёт в отдельном потоке, поэтому бот не замирает на больших файлах.
+
+```bash
+git clone https://github.com/EDeev/my_converterbot.git && cd my_converterbot
+cp .env.example .env      # BOT_TOKEN от @BotFather
+docker compose up -d
+```
+
+Готовый образ: `docker pull ghcr.io/edeev/my_converterbot` или `docker pull dcr.deev.su/edeev/my_converterbot`.
+Без Docker: `pip install -r requirements.txt`, затем `BOT_TOKEN=… python bot.py`.
+
+`rep_to_txt.py` работает и сам по себе: `python rep_to_txt.py путь/к/проекту`.
+
+## Структура
+
+```
+md2gost/converter.py   конвертер: настройки DocumentSettings и MarkdownToDocxConverter
+md2gost/cli.py         командная строка md2gost
+bot.py                 Telegram-бот
+rep_to_txt.py          дерево проекта и содержимое файлов в один .txt
+tests/                 тесты конвертера и бота
+```
+
+## Разработка
+
+```bash
+pip install -r requirements-dev.txt
+ruff check --select E9,F,B . && pytest
+```
+
+CI проверяет пакет на Python 3.9, 3.12 и 3.13 и собирает его. По тегу `v*` пакет публикуется на PyPI, а
+Docker-образ бота — в GitHub Packages и `dcr.deev.su`.
+
+## Лицензия
+
+MIT — см. [LICENSE](LICENSE).
+
+## Автор
+
+**Деев Егор Викторович** — [GitHub](https://github.com/EDeev) · [Telegram](https://t.me/DeevEgor) · [egor@deev.space](mailto:egor@deev.space)
 
 ---
 
 <div align="center">
-  <sub>⭐ Если проект оказался полезным, поставьте звездочку на GitHub!</sub>
-  <p><sub>Создано с ❤️ от вашего дорогого - deev.space ©</sub></p>
+  <sub>⭐ Если проект оказался полезным, поставьте звёздочку на GitHub!</sub>
+  <p><sub>Сделано с ❤️ — <a href="https://deev.space">deev.space</a></sub></p>
 </div>
