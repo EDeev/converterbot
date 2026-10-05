@@ -1,3 +1,4 @@
+import argparse
 import os
 
 IGNORE_PATTERNS = {
@@ -100,13 +101,11 @@ def process_single_file(relative_path, file_path):
 
     file_ext = os.path.splitext(relative_path)[1].lower()
 
-    # Обнаружение двоичных файлов и генерация URL-адресов
+    # Обнаружение двоичных файлов (вместо изображений раньше выводилась ссылка-заготовка
+    # https://raw.githubusercontent.com/.../ — она никуда не вела)
     if file_ext in BINARY_EXTENSIONS or is_likely_binary(file_path):
-        # GitHub raw URL
-        if file_ext in {'.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico'}:
-            # Структура URL - настраивается на основе фактического хранилища
-            github_url = f"https://raw.githubusercontent.com/.../{relative_path.replace(os.sep, '/')}"
-            content_lines.append(github_url)
+        if file_ext in {'.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.bmp'}:
+            content_lines.append("[Image - content not displayed]")
         else:
             content_lines.append("[Binary file - content not displayed]")
     else:
@@ -141,25 +140,22 @@ def is_likely_binary(file_path):
             chunk = f.read(8192)
             # Обнаружение нулевого байта - надежный бинарный индикатор
             return b'\x00' in chunk
-    except:
+    except OSError:
         return True
 
 
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Дерево каталогов проекта и содержимое текстовых файлов в один .txt")
+    parser.add_argument("path", help="папка проекта")
+    parser.add_argument("-o", "--output", help="куда сохранить (по умолчанию <папка>_rep.txt)")
+    args = parser.parse_args(argv)
+
+    project_path = os.path.abspath(args.path)
+    output = args.output or os.path.basename(project_path.rstrip(os.sep)) + "_rep.txt"
+    with open(output, "w", encoding="utf-8") as f:
+        f.write(generate_complete_project_structure(project_path))
+    print(output)
+
+
 if __name__ == "__main__":
-    # Конфигурация: измените путь к целевому каталогу проекта
-    project_path = r"D:\Programs\GitHub\deev.space\static"
-    # project_path = r"D:/Programs/GitHub/openoffice"
-    # project_path = "."
-
-    print("Приступаем к формированию комплексной структуры проекта...")
-    tree_output = generate_complete_project_structure(project_path)
-
-    output_filename = project_path.split('\\')[-1] + "_rep.txt"
-    try:
-        with open(output_filename, "w", encoding="utf-8") as f:
-            f.write(tree_output)
-        print(f"\nПолная проектная документация, сохраненная в: {output_filename}")
-    except Exception as e:
-        print(f"Предупреждение: Не удалось сохранить файл - {e}")
-
-    print("Формирование структуры проекта успешно завершено!")
+    main()
