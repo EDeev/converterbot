@@ -68,7 +68,7 @@ cp .env.example .env      # BOT_TOKEN from @BotFather
 docker compose up -d
 ```
 
-Prebuilt image: `docker pull ghcr.io/edeev/converterbot` or `docker pull dcr.deev.su/edeev/converterbot`.
+Prebuilt image: `docker pull ghcr.io/edeev/converterbot` or `docker pull git.deev.su/edeev/converterbot`.
 Without Docker: `pip install -r requirements.txt`, then `BOT_TOKEN=… python bot.py`.
 
 `rep_to_txt.py` also works on its own: `python rep_to_txt.py path/to/project`.
@@ -81,7 +81,7 @@ ruff check --select E9,F,B . && pytest
 ```
 
 CI tests the package on Python 3.9, 3.12 and 3.13 and builds it. On `v*` tags the package is published to
-PyPI and the bot's Docker image to GitHub Packages and `dcr.deev.su`.
+PyPI and the bot's Docker image to GitHub Packages and `git.deev.su`.
 
 ## License
 

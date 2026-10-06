@@ -67,7 +67,7 @@ cp .env.example .env      # BOT_TOKEN от @BotFather
 docker compose up -d
 ```
 
-Готовый образ: `docker pull ghcr.io/edeev/converterbot` или `docker pull dcr.deev.su/edeev/converterbot`.
+Готовый образ: `docker pull ghcr.io/edeev/converterbot` или `docker pull git.deev.su/edeev/converterbot`.
 Без Docker: `pip install -r requirements.txt`, затем `BOT_TOKEN=… python bot.py`.
 
 `rep_to_txt.py` работает и сам по себе: `python rep_to_txt.py путь/к/проекту`.
@@ -90,7 +90,7 @@ ruff check --select E9,F,B . && pytest
 ```
 
 CI проверяет пакет на Python 3.9, 3.12 и 3.13 и собирает его. По тегу `v*` пакет публикуется на PyPI, а
-Docker-образ бота — в GitHub Packages и `dcr.deev.su`.
+Docker-образ бота — в GitHub Packages и `git.deev.su`.
 
 ## Лицензия
 
